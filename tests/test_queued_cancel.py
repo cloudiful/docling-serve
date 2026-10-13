@@ -353,3 +353,42 @@ def test_deferred_external_cancel_during_sync_wait_returns_409(
 
     assert response.status_code == 409, response.text
     assert response.json()["detail"]["code"] == "TASK_CANCELLED"
+
+
+def test_cancelled_task_is_excluded_from_active_list(monkeypatch, tmp_path) -> None:
+    """Cancel over HTTP, then prove the listing omits it but keeps the peer."""
+    from types import SimpleNamespace
+
+    from docling_jobkit.orchestrators.local.orchestrator import (
+        LocalOrchestrator,
+        LocalOrchestratorConfig,
+    )
+
+    from docling_serve import app as app_module
+
+    orchestrator = LocalOrchestrator(
+        config=LocalOrchestratorConfig(scratch_dir=tmp_path),
+        # Enqueue validates sources against this flag; conversion never runs
+        # here because the TestClient never enters lifespan/process_queue.
+        converter_manager=SimpleNamespace(  # type: ignore[arg-type]
+            config=SimpleNamespace(allow_external_plugins=False)
+        ),
+    )
+    monkeypatch.setattr(app_module, "get_async_orchestrator", lambda: orchestrator)
+    with patch.object(app_module, "setup_otel_instrumentation"):
+        listing_client = TestClient(app_module.create_app())
+
+    enqueued = listing_client.post("/v1/convert/source/async", json=_sync_payload())
+    assert enqueued.status_code == 200, enqueued.text
+    live_id = enqueued.json()["task_id"]
+    to_cancel = listing_client.post("/v1/convert/source/async", json=_sync_payload())
+    assert to_cancel.status_code == 200, to_cancel.text
+    cancelled_id = to_cancel.json()["task_id"]
+
+    cancel = listing_client.post(f"/v1/tasks/{cancelled_id}/cancel")
+    assert cancel.status_code == 200, cancel.text
+    assert cancel.json()["task_status"] == "cancelled"
+
+    page = listing_client.get("/v1/tasks")
+    assert page.status_code == 200, page.text
+    assert [item["task_id"] for item in page.json()["items"]] == [live_id]
