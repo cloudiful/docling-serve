@@ -1,0 +1,106 @@
+name: Fork UI bundle (fork-only)
+
+# Fork-only automation for cloudiful/docling-serve main. Inert everywhere
+# else via the bundle-ui job guard. Commits only generated ui_static so a
+# Git-pinned install bundles the web UI. Upstream stays clean: cherry-pick
+# feature commits only, never this workflow or its bot commits.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ui/**"
+      - "pyproject.toml"
+      - ".github/workflows/fork-ui-bundle.yml"
+      - "scripts/fork_ui_bundle.py"
+  workflow_dispatch: {}
+
+concurrency:
+  group: fork-ui-bundle-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bundle-ui:
+    if: github.repository == 'cloudiful/docling-serve' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v6
+        with:
+          # pinned: uv 0.12.14 broke `uv lock` resolution for this project
+          version: "0.12.13"
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Build the web UI
+        run: |
+          npm --prefix ui ci
+          npm --prefix ui run build
+
+      - name: Build wheel without ML extras
+        run: |
+          uv build --wheel --out-dir dist
+
+      - name: Verify wheel contains packaged UI
+        run: |
+          python scripts/fork_ui_bundle.py verify-wheel --dist-dir dist
+
+      - name: Stage generated UI only
+        run: |
+          set -euo pipefail
+          git add --force -- docling_serve/ui_static
+          python scripts/fork_ui_bundle.py check-staged --repo .
+          echo "Staged generated output:"
+          git diff --cached --name-only -- docling_serve/ui_static
+
+      - name: Commit generated UI
+        run: |
+          set -euo pipefail
+          if git diff --cached --quiet; then
+            echo "No UI changes to commit; bundle already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git status --short
+          git diff --cached --stat
+          git commit -m "chore(fork): bundle packaged web UI"
+
+      - name: Push bundle to fork main
+        env:
+          TRIGGER_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          ORIGIN_MAIN="$(git rev-parse origin/main)"
+          HEAD_SHA="$(git rev-parse HEAD)"
+          if [ "$HEAD_SHA" = "$ORIGIN_MAIN" ]; then
+            echo "Already up to date; nothing to push."
+            exit 0
+          fi
+          if [ "$ORIGIN_MAIN" != "$TRIGGER_SHA" ]; then
+            echo "::error::refs/heads/main moved since this run started (stale queued run or concurrent push). Refusing to overwrite; re-run on latest main."
+            exit 1
+          fi
+          if ! git push origin HEAD:refs/heads/main; then
+            echo "::error::Push to fork main failed."
+            echo "If denied with 403, enable Settings > Actions > General > Workflow permissions > Read and write permissions for the default token."
+            echo "If denied by branch protection, an operator must allow the bot or push manually, then re-run."
+            exit 1
+          fi
