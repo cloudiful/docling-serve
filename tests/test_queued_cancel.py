@@ -1,10 +1,10 @@
-"""P2 Serve cancel API over frozen Jobkit cancellation and P2a wire schema.
+"""Serve cancel API over the Jobkit queued-only cancellation contract.
 
 Fake-orchestrator ASGI tests only: no models, no Redis, no workers. The atomic
-claim-vs-cancel guarantee itself stays covered by Jobkit's
-tests/test_queued_cancel.py; here the Serve layer must delegate it, map its
-stable not-found/conflict reasons to HTTP, and keep every terminal surface
-(poll/WS/result/sync) consistent for `cancelled`.
+claim-vs-cancel guarantee itself stays covered by Jobkit's own test suite; here
+the Serve layer must delegate it, map its stable not-found/conflict reasons to
+HTTP, and keep every terminal surface (poll/WS/result/sync) consistent for
+`cancelled`.
 """
 
 import uuid
@@ -33,7 +33,7 @@ def _task(
 
 
 class _FakeOrchestrator:
-    """Delegates cancellation exactly like the frozen Jobkit contract."""
+    """Delegates cancellation with the Jobkit conflict/not-found contract."""
 
     cancel_on_enqueue = False
 
@@ -191,13 +191,27 @@ def test_openapi_exposes_cancelled_status(client: TestClient):
         ref = doc["paths"][route]["post" if "cancel" in route else "get"]["responses"][
             "200"
         ]["content"]["application/json"]["schema"]["$ref"]
-        assert ref == "#/components/schemas/ServeTaskStatusResponse", ref
-    status_schema = doc["components"]["schemas"]["ServeTaskStatusResponse"][
-        "properties"
-    ]["task_status"]
-    assert {"const": "cancelled", "type": "string"} in status_schema["anyOf"]
-    assert doc["components"]["schemas"]["ServeTaskStatusResponse"]["title"] == (
-        "ServeTaskStatusResponse"
+        assert ref == "#/components/schemas/TaskStatusResponse", ref
+    status_schema = doc["components"]["schemas"]["TaskStatusResponse"]["properties"][
+        "task_status"
+    ]
+    assert status_schema == {"$ref": "#/components/schemas/ConversionStatus"}
+    assert "cancelled" in doc["components"]["schemas"]["ConversionStatus"]["enum"]
+
+
+def test_cancel_unsupported_engine_returns_501(
+    client: TestClient, orchestrator, monkeypatch
+):
+    async def _unsupported(task_id: str) -> Task:
+        raise NotImplementedError(f"no queued cancellation for {task_id}")
+
+    monkeypatch.setattr(orchestrator, "cancel_queued_task", _unsupported)
+
+    response = client.post("/v1/tasks/pending/cancel")
+
+    assert response.status_code == 501, response.text
+    assert response.json()["detail"] == (
+        "Queued task cancellation is not supported by this orchestrator."
     )
 
 

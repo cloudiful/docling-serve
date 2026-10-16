@@ -39,7 +39,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import create_model
 from scalar_fastapi import get_scalar_api_reference
 
-from docling.datamodel.base_models import DocumentStream
+from docling.datamodel.base_models import ConversionStatus, DocumentStream
 from docling.datamodel.service.callbacks import (
     CallbackSpec,
     ProgressCallbackRequest,
@@ -71,6 +71,7 @@ from docling.datamodel.service.responses import (
     PresignedUrlConvertResponse,
     ReadinessResponse,
     TaskFailureResult,
+    TaskStatusResponse,
     WebsocketMessage,
 )
 from docling.datamodel.service.targets import (
@@ -103,11 +104,6 @@ from docling_jobkit.orchestrators.rq.orchestrator import RQOrchestrator
 
 from docling_serve.auth import APIKeyAuth, AuthenticationResult
 from docling_serve.capabilities import CapabilitiesResponse, build_capabilities
-from docling_serve.datamodel.task_status import (
-    ServeTaskStatusResponse,
-    ServeWebsocketMessage,
-    to_serve_task_status,
-)
 from docling_serve.helper_functions import (
     DOCLING_VERSIONS,
     FormDepends,
@@ -655,12 +651,12 @@ def create_app():  # noqa: C901
 
     def _serve_status_response(
         task: Task, task_queue_position: int | None
-    ) -> ServeTaskStatusResponse:
+    ) -> TaskStatusResponse:
         """Build the Serve wire response, preserving every SDK field."""
-        return ServeTaskStatusResponse(
+        return TaskStatusResponse(
             task_id=task.task_id,
             task_type=task.task_type,
-            task_status=to_serve_task_status(task.task_status),  # type: ignore[arg-type]
+            task_status=ConversionStatus(task.task_status),
             task_position=task_queue_position,
             task_meta=task.processing_meta,
             error_message=task.error_message,
@@ -1007,7 +1003,7 @@ def create_app():  # noqa: C901
     @app.post(
         "/v1/convert/source/async",
         tags=["convert"],
-        response_model=ServeTaskStatusResponse,
+        response_model=TaskStatusResponse,
     )
     async def process_url_async(
         auth: Annotated[AuthenticationResult, Depends(require_auth)],
@@ -1033,7 +1029,7 @@ def create_app():  # noqa: C901
     @app.post(
         "/v1/convert/source/batch",
         tags=["convert"],
-        response_model=ServeTaskStatusResponse,
+        response_model=TaskStatusResponse,
     )
     async def process_source_batch(
         auth: Annotated[AuthenticationResult, Depends(require_auth)],
@@ -1062,7 +1058,7 @@ def create_app():  # noqa: C901
     @app.post(
         "/v1/convert/file/async",
         tags=["convert"],
-        response_model=ServeTaskStatusResponse,
+        response_model=TaskStatusResponse,
     )
     async def process_file_async(
         auth: Annotated[AuthenticationResult, Depends(require_auth)],
@@ -1124,7 +1120,7 @@ def create_app():  # noqa: C901
             f"/v1/chunk/{path_name}/source/async",
             name=f"Chunk sources with {display_name} as async task",
             tags=["chunk"],
-            response_model=ServeTaskStatusResponse,
+            response_model=TaskStatusResponse,
         )
         async def chunk_source_async(
             background_tasks: BackgroundTasks,
@@ -1153,7 +1149,7 @@ def create_app():  # noqa: C901
             f"/v1/chunk/{path_name}/file/async",
             name=f"Chunk files with {display_name} as async task",
             tags=["chunk"],
-            response_model=ServeTaskStatusResponse,
+            response_model=TaskStatusResponse,
         )
         async def chunk_file_async(
             background_tasks: BackgroundTasks,
@@ -1420,7 +1416,7 @@ def create_app():  # noqa: C901
     @app.get(
         "/v1/status/poll/{task_id}",
         tags=["tasks"],
-        response_model=ServeTaskStatusResponse,
+        response_model=TaskStatusResponse,
     )
     async def task_status_poll(
         auth: Annotated[AuthenticationResult, Depends(require_auth)],
@@ -1447,7 +1443,7 @@ def create_app():  # noqa: C901
     @app.post(
         "/v1/tasks/{task_id}/cancel",
         tags=["tasks"],
-        response_model=ServeTaskStatusResponse,
+        response_model=TaskStatusResponse,
     )
     async def cancel_queued_task(
         auth: Annotated[AuthenticationResult, Depends(require_auth)],
@@ -1470,6 +1466,13 @@ def create_app():  # noqa: C901
         except TaskCancellationConflictError as exc:
             raise HTTPException(
                 status_code=409, detail=_cancel_conflict_detail(exc.reason)
+            )
+        except NotImplementedError:
+            # Engines without an in-process queue (e.g. KFP) do not implement
+            # queued-only cancellation.
+            raise HTTPException(
+                status_code=501,
+                detail="Queued task cancellation is not supported by this orchestrator.",
             )
         task_queue_position = await orchestrator.get_queue_position(task_id=task_id)
         return _serve_status_response(cancelled, task_queue_position)
@@ -1530,7 +1533,7 @@ def create_app():  # noqa: C901
             task_queue_position = await orchestrator.get_queue_position(task_id=task_id)
             task_response = _serve_status_response(task, task_queue_position)
             await websocket.send_text(
-                ServeWebsocketMessage(
+                WebsocketMessage(
                     message=MessageKind.CONNECTION, task=task_response
                 ).model_dump_json()
             )
@@ -1544,7 +1547,7 @@ def create_app():  # noqa: C901
                 )
                 task_response = _serve_status_response(task, task_queue_position)
                 await websocket.send_text(
-                    ServeWebsocketMessage(
+                    WebsocketMessage(
                         message=MessageKind.UPDATE, task=task_response
                     ).model_dump_json()
                 )
