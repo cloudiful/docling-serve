@@ -43,6 +43,9 @@ jobs:
           cache-dependency-path: ui/package-lock.json
       - name: Install dependencies
         run: npm --prefix ui ci
+      - name: Build and install the fork TS client
+        if: github.repository == 'cloudiful/docling-serve'
+        run: python3 scripts/fork_ts_client.py
       - name: Typecheck and build
         run: npm --prefix ui run build
 

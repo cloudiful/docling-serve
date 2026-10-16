@@ -12,6 +12,7 @@ on:
       - "pyproject.toml"
       - ".github/workflows/fork-ui-bundle.yml"
       - "scripts/fork_ui_bundle.py"
+      - "scripts/fork_ts_client.py"
   workflow_dispatch: {}
 
 concurrency:
@@ -48,10 +49,15 @@ jobs:
           cache: npm
           cache-dependency-path: ui/package-lock.json
 
+      - name: Install UI dependencies
+        run: npm --prefix ui ci
+
+      - name: Build and install the fork TS client
+        if: github.repository == 'cloudiful/docling-serve'
+        run: python3 scripts/fork_ts_client.py
+
       - name: Build the web UI
-        run: |
-          npm --prefix ui ci
-          npm --prefix ui run build
+        run: npm --prefix ui run build
 
       - name: Build wheel without ML extras
         run: |
