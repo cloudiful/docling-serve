@@ -43,10 +43,16 @@ export class HttpError extends Error {
   }
 }
 
-async function getJson<T>(path: string): Promise<T> {
+/**
+ * Fetches and parses a JSON API path, reusing the session API key and the
+ * reverse-proxy-aware base URL. An optional `AbortSignal` lets callers cancel
+ * an in-flight request; nothing else about the credential handling changes.
+ */
+export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   const apiKey = getApiKey();
   const response = await fetch(`${apiBaseUrl()}${path}`, {
     headers: apiKey ? { "X-Api-Key": apiKey } : {},
+    signal,
   });
   if (!response.ok) {
     throw new HttpError(response.status, `${path}: ${response.status} ${response.statusText}`);
