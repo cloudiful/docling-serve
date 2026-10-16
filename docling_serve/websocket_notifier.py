@@ -13,6 +13,7 @@ from docling_jobkit.orchestrators.base_orchestrator import (
 from docling_serve.datamodel.task_status import (
     ServeTaskStatusResponse,
     ServeWebsocketMessage,
+    to_serve_task_status,
 )
 
 _log = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ class WebsocketNotifier(BaseNotifier):
             msg = ServeTaskStatusResponse(
                 task_id=task.task_id,
                 task_type=task.task_type,
-                task_status=task.task_status,
+                task_status=to_serve_task_status(task.task_status),  # type: ignore[arg-type]
                 task_position=task_queue_position,
                 task_meta=task.processing_meta,
                 error_message=task.error_message,

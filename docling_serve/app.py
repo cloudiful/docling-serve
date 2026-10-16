@@ -434,25 +434,28 @@ def create_app():  # noqa: C901
         )
 
     if offline_docs_assets and api_docs_enabled:
+        openapi_url = app.openapi_url
+        oauth2_redirect_url = app.swagger_ui_oauth2_redirect_url
+        assert openapi_url is not None and oauth2_redirect_url is not None
 
         @app.get("/swagger", include_in_schema=False)
         async def custom_swagger_ui_html():
             return get_swagger_ui_html(
-                openapi_url=app.openapi_url,
+                openapi_url=openapi_url,
                 title=app.title + " - Swagger UI",
-                oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
+                oauth2_redirect_url=oauth2_redirect_url,
                 swagger_js_url="/static/swagger-ui-bundle.js",
                 swagger_css_url="/static/swagger-ui.css",
             )
 
-        @app.get(app.swagger_ui_oauth2_redirect_url, include_in_schema=False)
+        @app.get(oauth2_redirect_url, include_in_schema=False)
         async def swagger_ui_redirect():
             return get_swagger_ui_oauth2_redirect_html()
 
         @app.get("/docs", include_in_schema=False)
         async def redoc_html():
             return get_redoc_html(
-                openapi_url=app.openapi_url,
+                openapi_url=openapi_url,
                 title=app.title + " - ReDoc",
                 redoc_js_url="/static/redoc.standalone.js",
             )
@@ -878,7 +881,7 @@ def create_app():  # noqa: C901
         background_tasks: BackgroundTasks,
         auth: Annotated[AuthenticationResult, Depends(require_auth)],
         orchestrator: Annotated[BaseOrchestrator, Depends(get_async_orchestrator)],
-        conversion_request: ConvertSourcesRequestModel,
+        conversion_request: ConvertSourcesRequestModel,  # ty: ignore[invalid-type-form]
         x_tenant_id: Annotated[
             str | None, Header(alias=docling_serve_settings.eng_ray_tenant_id_header)
         ] = None,
@@ -1009,7 +1012,7 @@ def create_app():  # noqa: C901
     async def process_url_async(
         auth: Annotated[AuthenticationResult, Depends(require_auth)],
         orchestrator: Annotated[BaseOrchestrator, Depends(get_async_orchestrator)],
-        conversion_request: ConvertSourcesRequestModel,
+        conversion_request: ConvertSourcesRequestModel,  # ty: ignore[invalid-type-form]
         x_tenant_id: Annotated[
             str | None, Header(alias=docling_serve_settings.eng_ray_tenant_id_header)
         ] = None,
@@ -1035,7 +1038,7 @@ def create_app():  # noqa: C901
     async def process_source_batch(
         auth: Annotated[AuthenticationResult, Depends(require_auth)],
         orchestrator: Annotated[BaseOrchestrator, Depends(get_async_orchestrator)],
-        conversion_request: BatchConvertSourcesRequestModel,
+        conversion_request: BatchConvertSourcesRequestModel,  # ty: ignore[invalid-type-form]
         x_tenant_id: Annotated[
             str | None, Header(alias=docling_serve_settings.eng_ray_tenant_id_header)
         ] = None,
