@@ -2,12 +2,6 @@ import { DoclingClient, type TaskStatusResponse } from "@docling/docling-client"
 
 import { apiBaseUrl, getApiKey } from "@/lib/api";
 
-/**
- * Compatibility surface kept for the queue UI. The Docling SDK client already
- * parses the terminal `cancelled` status and owns the polling/abort handling,
- * so this module only re-exports the status type and adapts the legacy
- * `pollTaskStatus` signature onto the SDK watcher.
- */
 export type WatchedTaskStatus = TaskStatusResponse;
 
 export const POLL_INTERVAL_MS = 2000;

@@ -1,16 +1,8 @@
 #!/usr/bin/env python3
 """Build and install the fork TypeScript client used by the packaged web UI.
 
-The Serve UI depends on ``@docling/docling-client``. This fork builds that
-package from ``cloudiful/docling-ts`` main instead of the published tarball, so
-the UI can use the cancellation-aware client before a release. The helper
-clones the fork into its own cache (never the developer's primary checkout),
-builds ``docling-client``, packs it, and installs the tarball into ``ui/``
-without touching ``ui/package.json`` or ``ui/package-lock.json``.
-
-Every run clones fresh, so repeated calls pick up the latest fork main; a new
-client commit needs an explicit re-run, never an automatic upgrade. All
-scratch/caches live under ``.cache/fork-ts-client``. Stdlib only, Python 3.10+.
+The helper builds ``cloudiful/docling-ts`` main into ``ui/`` as a packed tarball
+without changing ``ui/package.json`` or ``ui/package-lock.json``.
 """
 
 from __future__ import annotations
@@ -34,7 +26,6 @@ class ForkTsClientError(RuntimeError):
 
 
 def repo_root() -> Path:
-    """The docling-serve checkout that contains this script."""
     return Path(__file__).resolve().parents[1]
 
 
@@ -47,7 +38,6 @@ def _child_env(tmp_dir: Path) -> dict[str, str]:
 
 
 def _run(command: Sequence[str], cwd: Path, env: dict[str, str]) -> None:
-    """Run one build step, failing fast on a non-zero exit."""
     try:
         subprocess.run(command, cwd=str(cwd), env=env, check=True)
     except FileNotFoundError as exc:
@@ -90,8 +80,7 @@ def _packed_tarball(dist_dir: Path) -> Path:
 def sync_fork_ts_client(root: Path, cache_dir: Path) -> Path:
     """Build the fork client from fresh main and install it into ``ui/``.
 
-    Returns the retained tarball path. The clone is disposable and always
-    removed; the packed tarball is the artifact kept for reuse and inspection.
+    Returns the retained tarball; the clone is removed after the run.
     """
     clone_dir = cache_dir / "clone"
     dist_dir = cache_dir / "dist"

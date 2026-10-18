@@ -242,7 +242,6 @@ export function ConvertView({ capabilities, fields }: Props) {
           {run.phase === "cancelled" && (
             <Alert>
               <AlertTitle>Task cancelled</AlertTitle>
-              <AlertDescription>The conversion was cancelled while it was queued.</AlertDescription>
             </Alert>
           )}
           {run.phase === "error" && (

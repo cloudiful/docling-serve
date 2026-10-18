@@ -1468,8 +1468,6 @@ def create_app():  # noqa: C901
                 status_code=409, detail=_cancel_conflict_detail(exc.reason)
             )
         except NotImplementedError:
-            # Engines without an in-process queue (e.g. KFP) do not implement
-            # queued-only cancellation.
             raise HTTPException(
                 status_code=501,
                 detail="Queued task cancellation is not supported by this orchestrator.",

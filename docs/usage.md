@@ -500,7 +500,7 @@ Each value is either a **bare URL** (shortcut) or a **JSON-encoded `CallbackSpec
 
 The bare-URL format is the easiest way to register a webhook. Use the JSON-object format when you need custom request headers (e.g. an auth token) or a non-default CA certificate for TLS verification.
 
-When a queued task is cancelled, the completion callback fires once with the terminal `cancelled` status, exactly like a `success` or `failure` completion. Callback delivery is best-effort: a failing webhook never changes the cancellation response.
+The first successful cancellation of a queued task schedules one `cancelled` completion callback. Repeats do not resend it, and delivery is best-effort.
 
 <details>
 <summary>CURL example — bare URL callback:</summary>
@@ -862,29 +862,23 @@ When the task is completed, the result can be fetched with the endpoint:
 
 ## Fork installation and UI build
 
-This fork uses the `cloudiful` fork's latest `main` for Docling and Jobkit
-instead of a published release. `docling-slim` and `docling-jobkit` are
-declared as `git+https://github.com/cloudiful/{docling,docling-jobkit}.git@main`
-requirements with matching `[tool.uv.sources]` entries, so both pip and uv
-resolve the fork sources, including the transitive `docling-slim` requirement
-of `docling-mcp`:
+This fork installs Docling and Jobkit from the `cloudiful` fork's `main`
+branches:
 
 ```sh
 uv sync
 ```
 
-A lock install keeps the recorded Git revisions; refreshing them after fork
-`main` moves is an explicit step, never an automatic upgrade:
+A lock install keeps the recorded Git revisions. Refresh them explicitly when
+fork `main` moves:
 
 ```sh
 uv lock --upgrade-package docling-slim --upgrade-package docling-jobkit
 ```
 
-The packaged web UI depends on `@docling/docling-client`, which is built from
-the `cloudiful/docling-ts` fork. `scripts/fork_ts_client.py` clones that fork
-into `.cache/fork-ts-client`, builds the client, and installs the packed
-tarball into `ui/` without modifying `ui/package.json` or
-`ui/package-lock.json`:
+The UI depends on `@docling/docling-client` built from `cloudiful/docling-ts`.
+`scripts/fork_ts_client.py` builds it and installs the packed tarball into
+`ui/` without modifying `ui/package.json` or `ui/package-lock.json`:
 
 ```sh
 npm --prefix ui ci
@@ -892,5 +886,4 @@ python3 scripts/fork_ts_client.py
 npm --prefix ui run build
 ```
 
-The helper clones fresh on every run, so re-run it after
-`cloudiful/docling-ts` `main` moves to install the current fork client.
+Re-run the helper after `cloudiful/docling-ts` `main` moves.
