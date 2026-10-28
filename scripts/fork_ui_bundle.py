@@ -98,8 +98,7 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", "-C", str(repo), *args],
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
 
@@ -157,7 +156,10 @@ def cmd_verify_wheel(args: argparse.Namespace) -> int:
     if args.dist_dir:
         wheels.extend(find_wheels(Path(args.dist_dir)))
     if not wheels:
-        print("error: no wheels given; pass --wheel PATH or --dist-dir DIR", file=sys.stderr)
+        print(
+            "error: no wheels given; pass --wheel PATH or --dist-dir DIR",
+            file=sys.stderr,
+        )
         return 2
     prefix = getattr(args, "output_prefix", WHEEL_UI_PREFIX) or WHEEL_UI_PREFIX
     if not prefix.endswith("/"):
@@ -206,16 +208,34 @@ def build_parser() -> argparse.ArgumentParser:
         "verify-wheel",
         help="Fail unless each wheel bundles index.html plus nonempty assets.",
     )
-    verify.add_argument("--wheel", action="append", default=[], help="Wheel file to verify (repeatable).")
-    verify.add_argument("--dist-dir", default=None, help="Directory to scan for *.whl (e.g. dist).")
-    verify.add_argument("--output-prefix", default=WHEEL_UI_PREFIX, help="Wheel UI prefix (advanced).")
+    verify.add_argument(
+        "--wheel",
+        action="append",
+        default=[],
+        help="Wheel file to verify (repeatable).",
+    )
+    verify.add_argument(
+        "--dist-dir", default=None, help="Directory to scan for *.whl (e.g. dist)."
+    )
+    verify.add_argument(
+        "--output-prefix", default=WHEEL_UI_PREFIX, help="Wheel UI prefix (advanced)."
+    )
     verify.set_defaults(func=cmd_verify_wheel)
 
     # `verify` stays as a short alias for the documented wheel check.
     alias = sub.add_parser("verify", help="Alias for verify-wheel.")
-    alias.add_argument("--wheel", action="append", default=[], help="Wheel file to verify (repeatable).")
-    alias.add_argument("--dist-dir", default=None, help="Directory to scan for *.whl (e.g. dist).")
-    alias.add_argument("--output-prefix", default=WHEEL_UI_PREFIX, help="Wheel UI prefix (advanced).")
+    alias.add_argument(
+        "--wheel",
+        action="append",
+        default=[],
+        help="Wheel file to verify (repeatable).",
+    )
+    alias.add_argument(
+        "--dist-dir", default=None, help="Directory to scan for *.whl (e.g. dist)."
+    )
+    alias.add_argument(
+        "--output-prefix", default=WHEEL_UI_PREFIX, help="Wheel UI prefix (advanced)."
+    )
     alias.set_defaults(func=cmd_verify_wheel)
 
     check = sub.add_parser(
@@ -223,7 +243,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Fail when staged Git paths escape the generated output directory.",
     )
     check.add_argument("--repo", default=".", help="Repository root (default: .).")
-    check.add_argument("--output-dir", default=OUTPUT_DIR_POSIX, help="Generated output dir.")
+    check.add_argument(
+        "--output-dir", default=OUTPUT_DIR_POSIX, help="Generated output dir."
+    )
     check.set_defaults(func=cmd_check_staged)
     return parser
 

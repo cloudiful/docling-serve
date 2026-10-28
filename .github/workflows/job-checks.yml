@@ -74,9 +74,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
       - name: Create virtual environment
-        run: uv venv
+        run: uv venv --seed
       - name: Install package
-        run: uv pip install dist/*.whl
+        run: .venv/bin/python -m pip install dist/*.whl
       - name: Create the server
         run: .venv/bin/python -c 'from docling_serve.app import create_app; create_app()'
       - name: Serve the web UI from the installed package
