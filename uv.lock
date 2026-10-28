@@ -2194,8 +2194,8 @@ wheels = [
 
 [[package]]
 name = "docling-jobkit"
-version = "3.9.0"
-source = { git = "https://github.com/cloudiful/docling-jobkit.git?branch=main#68267a17ba17173c702d2b45290831e3477302cb" }
+version = "3.9.1"
+source = { git = "https://github.com/cloudiful/docling-jobkit.git?branch=main#c19d01124ea0649e36b5ece09c59e2dd961b1993" }
 dependencies = [
     { name = "boto3" },
     { name = "docling-core" },
@@ -2293,7 +2293,7 @@ wheels = [
 
 [[package]]
 name = "docling-serve"
-version = "1.37.0"
+version = "1.38.2"
 source = { editable = "." }
 default-groups = ["dev", "pypi"]
 dependencies = [
@@ -2421,7 +2421,7 @@ requires-dist = [
     { name = "opentelemetry-api", specifier = ">=1.36.0,<2.0.0" },
     { name = "opentelemetry-exporter-otlp", specifier = ">=1.15.0" },
     { name = "opentelemetry-exporter-prometheus", specifier = ">=0.57b0" },
-    { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.57b0,<0.58" },
+    { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.57b0,<1.0.0" },
     { name = "opentelemetry-sdk", specifier = ">=1.36.0,<2.0.0" },
     { name = "prometheus-client", specifier = ">=0.21.0" },
     { name = "pydantic", specifier = "~=2.10" },
@@ -2432,7 +2432,7 @@ requires-dist = [
     { name = "tesserocr", marker = "extra == 'tesserocr'", specifier = "~=2.7" },
     { name = "typer", specifier = "~=0.12" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29.0,<1.0.0" },
-    { name = "websockets", specifier = ">=14.0,<17.0" },
+    { name = "websockets", specifier = ">=14.0,<18.0" },
 ]
 provides-extras = ["ui", "tesserocr", "easyocr", "rapidocr", "flash-attn"]
 
@@ -2464,14 +2464,14 @@ cu130 = [
 dev = [
     { name = "asgi-lifespan", specifier = "~=2.0" },
     { name = "httpx" },
-    { name = "numpy", specifier = "<2.5.0" },
+    { name = "numpy", specifier = "<3.0.0" },
     { name = "prek", specifier = ">=0.3.10" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pypdf", specifier = ">=6.0.0" },
     { name = "pytest", specifier = ">=8.3,<10.0.0" },
     { name = "pytest-asyncio", specifier = "~=1.2" },
-    { name = "pytest-check", specifier = "~=2.8" },
+    { name = "pytest-check", specifier = ">=2.8,<4.0.0" },
     { name = "python-semantic-release", specifier = "~=7.32" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "ruff", specifier = "==0.16.10" },
@@ -2506,8 +2506,8 @@ typecheck = [
 
 [[package]]
 name = "docling-slim"
-version = "2.141.0"
-source = { git = "https://github.com/cloudiful/docling.git?branch=main#061f35167867e7bc5e22763e264f838875d1a41a" }
+version = "2.143.1"
+source = { git = "https://github.com/cloudiful/docling.git?branch=main#589138cbe07028693d4a09347a60d3c8e298cf14" }
 dependencies = [
     { name = "certifi" },
     { name = "docling-core" },

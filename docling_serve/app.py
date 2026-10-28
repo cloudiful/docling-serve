@@ -369,6 +369,7 @@ def create_app():  # noqa: C901
         redis_url=redis_url,
         metrics_port=docling_serve_settings.metrics_port,
         ray_redis_manager=ray_redis_manager,
+        ray_metrics_refresh_interval=docling_serve_settings.eng_ray_tenant_metrics_refresh_interval,
     )
 
     # Add log context middleware to extract request headers
@@ -1261,6 +1262,7 @@ def create_app():  # noqa: C901
                     status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail="presigned_url target is not supported for chunk endpoints.",
                 )
+            _check_file_upload(files, target_type)
             convert_options = _prepare_convert_options(convert_options)
             _validate_multipart_target_type(target_type)
             tenant_id = _get_tenant_id_from_header(x_tenant_id)
@@ -1398,6 +1400,7 @@ def create_app():  # noqa: C901
                     status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail="presigned_url target is not supported for chunk endpoints.",
                 )
+            _check_file_upload(files, target_type)
             convert_options = _prepare_convert_options(convert_options)
             _validate_multipart_target_type(target_type)
             tenant_id = _get_tenant_id_from_header(x_tenant_id)
