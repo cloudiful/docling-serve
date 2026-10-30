@@ -197,5 +197,6 @@ describe("refresh timing", () => {
     expect(detailStatusSummary("pending")).toBeNull();
     expect(detailStatusSummary("failure")).toBe("The task failed.");
     expect(detailStatusSummary("success")).toContain("completed");
+    expect(detailStatusSummary("cancelled")).toBe("The task was cancelled.");
   });
 });

@@ -682,9 +682,8 @@ The response format is a task detail:
 }
 ```
 
-A task cancelled while still queued ends in the terminal `cancelled` status.
-`cancelled` is terminal like `success` and `failure`: polling and websocket
-loops must treat it as a final state and must not fetch a result for it.
+A queued task can end in the terminal `cancelled` status. Polling and websocket
+loops must stop on this status without fetching a result.
 
 ### Cancelling a queued task
 
@@ -713,14 +712,6 @@ result — `GET /v1/result/{task_id}` returns `409` with `detail.code
 "TASK_CANCELLED"` instead of a result payload. A synchronous conversion that is
 cancelled externally while waiting ends with the same `409 TASK_CANCELLED`
 response instead of a result.
-
-Terminal waiting loops must therefore watch for `cancelled` alongside `success`
-and `failure`:
-
-```python
-while task["task_status"] not in ("success", "failure", "cancelled"):
-    ...
-```
 
 ### Polling status
 

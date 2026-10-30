@@ -1,20 +1,18 @@
-"""Serve task-status wire models and websocket notifier behavior.
+# SPDX-License-Identifier: MIT
 
-Serve returns the Docling SDK response models directly, so these tests pin the
-contract it relies on: every terminal status including ``cancelled`` is valid on
-the wire, and the notifier closes a subscriber once it delivered a terminal
-status. No Serve-owned copy of the models exists.
-"""
+"""Serve task-status wire models and websocket notifier behavior."""
 
 import json
 
-from docling.datamodel.base_models import ConversionStatus
+import pytest
+from pydantic import ValidationError
+
 from docling.datamodel.service.responses import (
     MessageKind,
     TaskStatusResponse,
     WebsocketMessage,
 )
-from docling.datamodel.service.tasks import TaskType
+from docling.datamodel.service.tasks import TaskStatus, TaskType
 from docling_jobkit.datamodel.task import Task
 from docling_jobkit.datamodel.task_meta import TaskStatus as JobkitStatus
 from docling_jobkit.orchestrators.base_orchestrator import TaskNotFoundError
@@ -47,8 +45,8 @@ class _FakeWebSocket:
         self.closed = True
 
 
-def test_every_sdk_status_is_accepted_and_serialized():
-    for status in list(ConversionStatus):
+def test_every_task_status_is_accepted_and_serialized():
+    for status in list(TaskStatus):
         response = TaskStatusResponse(
             task_id="t", task_type=TaskType.CONVERT, task_status=status
         )
@@ -70,19 +68,20 @@ def test_cancelled_string_and_jobkit_enum_accepted():
     assert from_jobkit.model_dump()["task_status"] == "cancelled"
 
 
-def test_jobkit_statuses_coerce_to_sdk_enum():
-    for jobkit_status, sdk_status in (
-        (JobkitStatus.PENDING, ConversionStatus.PENDING),
-        (JobkitStatus.STARTED, ConversionStatus.STARTED),
-        (JobkitStatus.SUCCESS, ConversionStatus.SUCCESS),
-        (JobkitStatus.FAILURE, ConversionStatus.FAILURE),
-    ):
-        response = TaskStatusResponse(
-            task_id="t",
-            task_type=TaskType.CONVERT,
-            task_status=jobkit_status,
-        )
-        assert response.task_status == sdk_status
+def test_jobkit_status_is_the_canonical_task_status():
+    assert JobkitStatus is TaskStatus
+    response = TaskStatusResponse(
+        task_id="t", task_type=TaskType.CONVERT, task_status=JobkitStatus.STARTED
+    )
+    assert response.task_status is TaskStatus.STARTED
+
+
+def test_document_only_statuses_are_rejected():
+    for invalid in ("partial_success", "skipped"):
+        with pytest.raises(ValidationError):
+            TaskStatusResponse(
+                task_id="t", task_type=TaskType.CONVERT, task_status=invalid
+            )
 
 
 def test_sdk_fields_and_defaults_preserved():
@@ -98,7 +97,7 @@ def test_sdk_fields_and_defaults_preserved():
     full = TaskStatusResponse(
         task_id="t",
         task_type=TaskType.CONVERT,
-        task_status=ConversionStatus.STARTED,
+        task_status=TaskStatus.STARTED,
         task_position=3,
         error_message="boom",
     )
@@ -106,10 +105,16 @@ def test_sdk_fields_and_defaults_preserved():
     assert full.error_message == "boom"
 
 
-def test_status_schema_exposes_cancelled_terminal():
+def test_status_schema_exposes_task_status_enum():
     schema = TaskStatusResponse.model_json_schema()
-    assert schema["properties"]["task_status"] == {"$ref": "#/$defs/ConversionStatus"}
-    assert "cancelled" in schema["$defs"]["ConversionStatus"]["enum"]
+    assert schema["properties"]["task_status"] == {"$ref": "#/$defs/TaskStatus"}
+    assert set(schema["$defs"]["TaskStatus"]["enum"]) == {
+        "pending",
+        "started",
+        "success",
+        "failure",
+        "cancelled",
+    }
 
     payload = json.loads(
         TaskStatusResponse(
