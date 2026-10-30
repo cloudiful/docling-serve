@@ -55,7 +55,7 @@ export async function fetchTaskDetail(taskId: string, signal?: AbortSignal): Pro
 export interface TaskDetail {
   taskId: string;
   taskType: TaskType;
-  taskStatus: TaskStatusResponse["task_status"] | "cancelled";
+  taskStatus: TaskStatusResponse["task_status"];
   taskPosition: number | null;
   meta: {
     num_docs: number;
@@ -92,12 +92,8 @@ export function detailStatusSummary(status: TaskDetail["taskStatus"]): string | 
       return "The task failed.";
     case "success":
       return "The task completed successfully.";
-    case "partial_success":
-      return "The task completed with partial results.";
     case "cancelled":
       return "The task was cancelled.";
-    case "skipped":
-      return "The task was skipped.";
     default:
       return null;
   }

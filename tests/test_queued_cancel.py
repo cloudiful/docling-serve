@@ -1,10 +1,9 @@
-"""Serve cancel API over the Jobkit queued-only cancellation contract.
+# SPDX-License-Identifier: MIT
 
-Fake-orchestrator ASGI tests only: no models, no Redis, no workers. The atomic
-claim-vs-cancel guarantee itself stays covered by Jobkit's own test suite; here
-the Serve layer must delegate it, map its stable not-found/conflict reasons to
-HTTP, and keep every terminal surface (poll/WS/result/sync) consistent for
-`cancelled`.
+"""Queued-cancellation HTTP and WebSocket contracts.
+
+Use a fake orchestrator without models, Redis or workers. Backend start/cancel
+arbitration is covered by Jobkit.
 """
 
 import uuid
@@ -33,7 +32,7 @@ def _task(
 
 
 class _FakeOrchestrator:
-    """Delegates cancellation with the Jobkit conflict/not-found contract."""
+    """Cancellation test double."""
 
     cancel_on_enqueue = False
 
@@ -195,8 +194,14 @@ def test_openapi_exposes_cancelled_status(client: TestClient):
     status_schema = doc["components"]["schemas"]["TaskStatusResponse"]["properties"][
         "task_status"
     ]
-    assert status_schema == {"$ref": "#/components/schemas/ConversionStatus"}
-    assert "cancelled" in doc["components"]["schemas"]["ConversionStatus"]["enum"]
+    assert status_schema == {"$ref": "#/components/schemas/TaskStatus"}
+    assert set(doc["components"]["schemas"]["TaskStatus"]["enum"]) == {
+        "pending",
+        "started",
+        "success",
+        "failure",
+        "cancelled",
+    }
 
 
 def test_cancel_unsupported_engine_returns_501(
