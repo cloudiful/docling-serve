@@ -384,15 +384,17 @@ def test_cancelled_task_is_excluded_from_active_list(monkeypatch, tmp_path) -> N
     )
 
     from docling_serve import app as app_module
+    from docling_serve.settings import docling_serve_settings
 
     orchestrator = LocalOrchestrator(
-        config=LocalOrchestratorConfig(scratch_dir=tmp_path),
+        config=LocalOrchestratorConfig(scratch_dir=tmp_path, enable_task_listing=True),
         # Enqueue validates sources against this flag; conversion never runs
         # here because the TestClient never enters lifespan/process_queue.
         converter_manager=SimpleNamespace(  # type: ignore[arg-type]
             config=SimpleNamespace(allow_external_plugins=False)
         ),
     )
+    monkeypatch.setattr(docling_serve_settings, "enable_task_listing", True)
     monkeypatch.setattr(app_module, "get_async_orchestrator", lambda: orchestrator)
     with patch.object(app_module, "setup_otel_instrumentation"):
         listing_client = TestClient(app_module.create_app())
